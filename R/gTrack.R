@@ -7,7 +7,7 @@
 #' \describe{
 #'   \item{data}{length(.Object) length list containing genomic data (e.g. GRanges, GrangesLists, RleLists, path to ucsc file or ffTrack file on disk)}
 #'   \item{seqinfo}{Seqinfo object}
-#'   \item{colormap}{length(.Object) length named list of named vectors whose entry i specifies the colormap for the meta data field of object entry i (specified by the name) and maps unique value of that data field to colors (specified by the named vector)}
+#'   \item{colormap}{length(.Object) length named list of named vectors whose entry i specifies the colormap for the meta data field of object entry i (specified by the name) and maps unique value of that data field to colors (specified by the named vector),"if.flip"}
 #'   \item{edges}{list of data.frames of length length(.Object) which has columns $from, $to, and optional fields $col, $lwd, and $lty to specify splined edges joining data items in the corresponding track}
 #'   \item{formatting}{\code{data.frame} holding all of the formatting options}
 #'   \item{mdata}{\code{matrix} holding interaction data between genomic loci (e.g. hiC)}
@@ -340,7 +340,8 @@ gTrack = function(data = NULL, ##
     labels.suppress.grl = labels.suppress,
     labels.suppress.gr = labels.suppress,
                   bg.col = 'white', ## background color of whole thing
-    formatting = NA) {
+    formatting = NA,
+    if.flip=FALSE) {
 
     ## TODO: FIX THIS USING formals() and some eval / do.call syntax or something similar
     new('gTrack', data = data, y.field = y.field, mdata = mdata, name = name, format = formatting,
@@ -1664,7 +1665,7 @@ rrbind = function (..., union = TRUE, as.data.table = FALSE)
       all.args$sigma= all.args$smooth
       window.segs[[i]] <- do.call('draw.triangle', all.args[names(all.args) %in% c("grl","y","mdata","ylim.parent","windows","win.gap","sigma", "max.ranges",
                                                                                    "cmap.min","cmap.max", "m.sep.lwd","legend","leg.params",
-                                                                                   "islog","gr.colormap")])
+                                                                                   "islog","gr.colormap","if.flip")])
     } else {
       window.segs[[i]] <- do.call('draw.grl', all.args)
     }
@@ -4452,7 +4453,7 @@ draw.triangle <- function(grl,mdata,y,
                           ylim.parent=NULL,
                           windows = NULL,
                           win.gap = NULL,
-#$                          m.bg.col = NA, ## DEPRECATED, it is now cmin
+                          m.bg.col = NA, #
                           sigma = NA, ## if not NA then will blur with a Gaussian filter using a sigma value of this many base pairs
                           col.min='white',
                           col.max='red',
@@ -4464,7 +4465,8 @@ draw.triangle <- function(grl,mdata,y,
                           max.ranges = Inf, 
                           leg.params = list(),
                           min.gapwidth = 1,
-                          islog = FALSE) {
+                          islog = FALSE,
+                          if.flip = FALSE) {
 
   # if (!is.null(gr.colormap)) {
   #   if (!is.null(names(gr.colormap)))
@@ -4561,8 +4563,13 @@ draw.triangle <- function(grl,mdata,y,
   asp.ratio <- (par('pin')[2])/(par('pin')[1])
   hgt.plot <- abs(diff(ylim.parent))
   dlim <- c(0, wid * asp.ratio * (hgt.subp / hgt.plot))
+  if (if.flip == FALSE){
   y0 <- dlim[1]
   y1 <- dlim[2]
+  }else{
+  y0 <- dlim[2]
+  y1 <- dlim[1]
+  }
 
   ## draw blank background
   rect(xlim[1]-diff(xlim)*0.1, ylim.subplot[1], xlim[2], ylim.subplot[2], border = NA, col = par('bg'))
@@ -4587,7 +4594,9 @@ draw.triangle <- function(grl,mdata,y,
   ## "background"
   ## TODO: what if the "background" pixels are not 0 or cmap.min? would be nice to save on drawing
   ## then too ... 
-  m.bg.col = cs[1]
+  if(is.na(m.bg.col)){
+    m.bg.col = cs[1]
+  }
  
   ## draw the background BOXES using the min color
   if (nrow(window.segs) > 1) {
